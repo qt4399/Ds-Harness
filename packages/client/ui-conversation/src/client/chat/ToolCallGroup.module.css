@@ -1,0 +1,77 @@
+.root {
+  min-width: 0;
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-m-18);
+  line-height: 42px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The active thinking label uses the same restrained text sheen as the
+   conversation's running status, without adding a card or background. */
+.root[data-running] .summary {
+  font: var(--dsw-font-m-18);
+  background: linear-gradient(
+    90deg,
+    var(--dsw-alias-label-primary) 0%,
+    var(--dsw-alias-label-primary) 40%,
+    var(--dsw-static-neutral-bluish-00) 50%,
+    var(--dsw-alias-label-primary) 60%,
+    var(--dsw-alias-label-primary) 100%
+  );
+  background-position: 100% 0;
+  background-size: 250% 100%;
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: dsh-tool-thinking-sheen 2.8s linear infinite;
+}
+
+@keyframes dsh-tool-thinking-sheen {
+  0% { background-position: 100% 0; }
+  24% { background-position: 0 0; }
+  100% { background-position: 0 0; }
+}
+
+body[data-ds-dark-theme] .root[data-running] .summary {
+  background-image: linear-gradient(
+    90deg,
+    var(--dsw-alias-label-secondary) 0%,
+    var(--dsw-alias-label-secondary) 40%,
+    var(--dsw-static-neutral-bluish-00) 50%,
+    var(--dsw-alias-label-secondary) 60%,
+    var(--dsw-alias-label-secondary) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-running] .summary {
+    background-position: 0 0;
+    background-size: 100% 100%;
+    animation: none;
+  }
+}
+
+.summary::marker {
+  color: var(--dsw-alias-label-caption);
+}
+
+.summary:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.calls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 0 16px;
+  padding-left: 12px;
+  border-left: 1px solid var(--dsw-alias-border-l2);
+}
