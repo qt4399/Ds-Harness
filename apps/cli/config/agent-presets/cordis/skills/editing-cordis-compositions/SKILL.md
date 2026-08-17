@@ -121,34 +121,6 @@ After a clean mount-validation, ask the user to start a session on the new prese
 
 `cordis_mount` evaluates JavaScript against the live runtime and disappears on restart. It is for probing, not for shipping a capability: a capability belongs in a composition file.
 
-## Native product subagents
-
-Codex and Claude Code providers already live in the host composition. A preset chooses either product by contributing the same ordinary delegation-tool row used for spawn and fork; never move a product provider into the preset and never add a product-specific settings field.
-
-Copy these disabled templates from a shipped full preset and remove `disabled` only for the products the user requested:
-
-```yaml
-- id: tool-subagent-codex
-  name: '@deepseek-ai/dsh-tool-subagent'
-  disabled: true
-  config:
-    provider: codex
-    toolName: subagent_codex
-    enableRunInBackground: false
-    maxDepth: provider-managed
-
-- id: tool-subagent-claude-code
-  name: '@deepseek-ai/dsh-tool-subagent'
-  disabled: true
-  config:
-    provider: claude-code
-    toolName: subagent_claude_code
-    enableRunInBackground: false
-    maxDepth: provider-managed
-```
-
-The two rows are independent. Leaving both disabled preserves the copied preset, enabling one exposes only that product tool, and enabling both exposes both. The host must provide `codex` or `claude` on `PATH`; the preset does not install, authenticate, select a model for, or probe either product.
-
 ## What not to move into a preset
 
 `agent-loop` registers the one agent factory and throws on a second. The registries own the per-session layering and cannot themselves be per-session. Session persistence must stay host-side or the session list fragments. The sandbox, approval, and permission rows are a deliberate boundary: a preset is exactly as privileged as the plugins it names, so letting one relax its own confinement would defeat the confinement.

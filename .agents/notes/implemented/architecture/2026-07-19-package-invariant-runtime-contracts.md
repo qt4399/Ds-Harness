@@ -40,7 +40,6 @@ The current 103-package workspace has 21 executable companions and 82 justified 
 | `dsh-tools` | Monotonic pre/execute/post stages and immutable final execution/result snapshots. |
 | `dsh-system-prompt` | Authoritative assembly section, tool, and variable data constraints. |
 | `dsh-compaction` | Compaction start/summary/end pairing, range endpoints, token counts, and successful-summary presence. |
-| `dsh-hook-protocol` | Hook invocation/result correlation, dialect, identity, and duration constraints. |
 | `dsh-sandbox-policy` | Durable `sandbox/mode` events use the closed sandbox-mode vocabulary. |
 | `dsh-fs` | Filesystem decision/observation events carry usable target and version identities. |
 | `dsh-goal` | Durable goal snapshots preserve source attribution, rendered content, revisions, lifecycle and timestamp relationships, and sequential admitted rounds. |

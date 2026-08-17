@@ -38,13 +38,11 @@ interface SessionPersistence {
 - 执行具有关联 agent 时，`DSH_SESSION_ID` 存在并等于 `agent.session.header.id`。
 - 内置的持久化转换层提供 `DSH_SESSION_JSONL` 的条件是 `ctx.sessionPersistence.locate(header)` 返回 `kind: 'jsonl'`。
 
-会话持久化仍然是事实所有者：JSONL 不依赖 tool-bash，也不会自行注册 shell 变量；钩子继续直接使用 `locate()`。tool-bash 是把持久化事实转换为 shell 约定的转换层。其他需要向 shell 公开事实的插件依赖该注册表，并注册各自的键；它们不修改 `process.env`。
+会话持久化仍然是事实所有者：JSONL 不依赖 tool-bash，也不会自行注册 shell 变量。tool-bash 是把持久化事实转换为 shell 约定的转换层。其他需要向 shell 公开事实的插件依赖该注册表，并注册各自的键；它们不修改 `process.env`。
 
-bash seam 导出 `DSH_ENV_PREFIX` 作为唯一的命名空间来源，并派生 `DshEnvironmentKey`，其来源是该常量的 `typeof`。tool-bash 从该常量派生内置名称与模型指引，执行器则使用该常量过滤环境中已有的值。seam 通过 `ShellExecRequest.dshEnv`／`ShellExecSpec.dshEnv` 单独传递受管理的覆盖层：普通 `env` 仍是钩子所用的通用进程内插件接口，`dshEnv` 则以类型约束为受管理键。本地执行器移除环境中继承的全部受管理键，依次应用普通清理、终端环境和显式 `env`，最后合并受信任的 `dshEnv` 快照，因此 `env` 条目永远无法顶掉受管理的值。这保证了值缺失表示它当前确实不存在，而不是从外层或先前的 harness 继承而来。面向模型的工具仍忽略模型提供的 `env`／`stdin` 参数。
+bash seam 导出 `DSH_ENV_PREFIX` 作为唯一的命名空间来源，并派生 `DshEnvironmentKey`，其来源是该常量的 `typeof`。tool-bash 从该常量派生内置名称与模型指引，执行器则使用该常量过滤环境中已有的值。seam 通过 `ShellExecRequest.dshEnv`／`ShellExecSpec.dshEnv` 单独传递受管理的覆盖层：普通 `env` 仍是通用进程内插件接口，`dshEnv` 则以类型约束为受管理键。本地执行器移除环境中继承的全部受管理键，依次应用普通清理、终端环境和显式 `env`，最后合并受信任的 `dshEnv` 快照，因此 `env` 条目永远无法顶掉受管理的值。这保证了值缺失表示它当前确实不存在，而不是从外层或先前的 harness 继承而来。面向模型的工具仍忽略模型提供的 `env`／`stdin` 参数。
 
 bash 工具说明只讲解持久约定：当前 harness 环境事实通过受管理的 `$DSH_*` 变量提供，可以在需要时查看。它不会枚举持久化专用键，也不会添加永久的系统提示词章节。工具 schema 已记录在请求 header 中，工具输出则记录为 `tool/result`，因此无需新增会话事件。
-
-[Claude Code 和 Codex 钩子桥接层](2026-06-30-hook-bridges.md)在构造 payload 时，从同一持久化 seam 解析 transcript 位置。Codex 使用 `transcript_path: string | null`；Claude Code 保留其字符串字段，并回退为 `''`。钩子查询不会物化或刷写会话。
 
 ## 同类产品调研
 

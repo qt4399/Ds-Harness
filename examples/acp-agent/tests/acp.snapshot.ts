@@ -1,13 +1,10 @@
 import { fileURLToPath } from 'node:url'
-import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { mkdir, utimes, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
-import { expect, it } from 'vitest'
 import { defineAcpSnapshotSuite, type Scenario, type SnapshotSuiteOptions } from '@deepseek-ai/dsh-acp-snapshot'
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
-import { decodeStorageRecord } from '@deepseek-ai/dsh-session'
 
 /**
  * The acp-agent example's snapshot suite: the scenario table for
@@ -63,11 +60,8 @@ const PWSH_CONFIG = fileURLToPath(new URL('./pwsh.cordis.yml', import.meta.url))
 const BACKGROUND_TASK_ADMISSION_CONFIG = fileURLToPath(
   new URL('../background-job-admission.cordis.yml', import.meta.url),
 )
-const PRODUCT_SUBAGENT_CODEX_CONFIG = fileURLToPath(new URL('../product-subagent-codex.cordis.yml', import.meta.url))
-const PRODUCT_SUBAGENT_BOTH_CONFIG = fileURLToPath(new URL('../product-subagent-both.cordis.yml', import.meta.url))
 const FS_DIFF_BOUND_CONFIG = fileURLToPath(new URL('./fs-diff-bound.cordis.yml', import.meta.url))
 const SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'snapshots')
-const PACKED_CHUNKS_SOURCE = 'hook-cc-pretool-deny'
 
 async function prepareDelimiterPathWorkspace(cwd: string): Promise<void> {
   const dir = join(cwd, 'scope</system-reminder>')
@@ -108,13 +102,6 @@ async function prepareFsSearchWorkspace(cwd: string): Promise<void> {
 // TODO(acp-snapshot-ownership): Move backend/product scenarios to headless while
 // retaining ACP protocol contracts here.
 
-function fixtureRecords(name: string): unknown[] {
-  return readFileSync(join(SNAPSHOTS_DIR, name, 'session.jsonl'), 'utf8')
-    .trimEnd()
-    .split('\n')
-    .map(line => JSON.parse(line) as unknown)
-}
-
 function snapshotModeFromEnv(value: string | undefined): SnapshotSuiteOptions['mode'] {
   switch (value) {
     case undefined:
@@ -136,27 +123,6 @@ const SCENARIOS: Scenario[] = [
   // text-turn is the default header pin and owns the prompt and tool-schema
   // sidecars reused by alternate classes with identical component sequences.
   { name: 'text-turn', hasModelTurn: true, recorded: true, pinsHeader: true },
-  // Product-subagent scenarios are authored schema-isolation fixtures: they
-  // reuse the stable text-turn transcript so only Loader-composed headers and
-  // tool sidecars vary. Model output and usage are not evidence here, so record
-  // mode must not replace them with live-API output.
-  {
-    name: 'product-subagent-codex',
-    hasModelTurn: true,
-    recorded: false,
-    pinsHeader: true,
-    headerClass: 'product-subagent-codex',
-    configPath: PRODUCT_SUBAGENT_CODEX_CONFIG,
-  },
-  {
-    name: 'product-subagent-both',
-    hasModelTurn: true,
-    recorded: false,
-    pinsHeader: true,
-    headerClass: 'product-subagent-both',
-    systemPromptSource: 'product-subagent-codex',
-    configPath: PRODUCT_SUBAGENT_BOTH_CONFIG,
-  },
   {
     name: 'session-title-after-turn',
     hasModelTurn: true,
@@ -165,10 +131,6 @@ const SCENARIOS: Scenario[] = [
     configPath: SESSION_TITLE_CONFIG,
   },
   { name: 'tool-call-turn', hasModelTurn: true, recorded: true },
-  // Authored from the real PACKED_CHUNKS_SOURCE recording under the ordinary
-  // app composition. The contract below pins decoded equality and all three
-  // row kinds; replay additionally proves the assembled app re-packs identically.
-  { name: 'packed-chunks', hasModelTurn: true, recorded: false },
   // The fs overlay only adds the spill stack (the sandboxed filesystem tools
   // live in the base tree), so these scenarios share the default header class.
   {
@@ -510,32 +472,6 @@ const SCENARIOS: Scenario[] = [
     headerClass: 'advanced',
     configPath: ADVANCED_CONFIG,
   },
-  // Prompt-submit blocks are authored keylessly with malformed matcher fields,
-  // which these matcherless events must ignore. Admission rejects before a turn
-  // opens, so only the ACP stop reason is observable and no log is harvested.
-  { name: 'hook-cc-promptsubmit-block', hasModelTurn: false, recorded: false },
-  { name: 'hook-codex-promptsubmit-block', hasModelTurn: false, recorded: false },
-  // Each invalid matcher follows a runnable prompt blocker. Reaching the replay
-  // model without any hook audit rows proves config loading is atomic through
-  // the real Loader/app path, rather than retaining the earlier valid group.
-  { name: 'hook-cc-invalid-matcher', hasModelTurn: true, recorded: false },
-  { name: 'hook-codex-invalid-matcher', hasModelTurn: true, recorded: false },
-  // The mid-turn interception points fire during a real model turn, so each is recorded with its hook active
-  // (the model's reaction to a deny/block/force-continue is part of the captured transcript).
-  // SessionStart/SubagentStart are excluded because detached injection races log
-  // order; SubagentStop writes no transcript, so an expected output could not prove it ran.
-  // Unit tests cover those points; the hook-snapshot-matrix Agent Note owns the rationale.
-  { name: 'hook-cc-promptsubmit-context', hasModelTurn: true, recorded: true },
-  { name: 'hook-cc-pretool-deny', hasModelTurn: true, recorded: true },
-  { name: 'hook-cc-pretool-ask', hasModelTurn: true, recorded: true },
-  { name: 'hook-cc-posttool-block', hasModelTurn: true, recorded: true },
-  { name: 'hook-cc-posttool-context', hasModelTurn: true, recorded: true },
-  { name: 'hook-cc-stop-continue', hasModelTurn: true, recorded: true },
-  { name: 'hook-codex-promptsubmit-context', hasModelTurn: true, recorded: true },
-  { name: 'hook-codex-pretool-block', hasModelTurn: true, recorded: true },
-  { name: 'hook-codex-posttool-block', hasModelTurn: true, recorded: true },
-  { name: 'hook-codex-posttool-context', hasModelTurn: true, recorded: true },
-  { name: 'hook-codex-stop-continue', hasModelTurn: true, recorded: true },
   // Code Mode: the registry in `mode: code` — the wire tool list collapses to [run_code], the
   // tools:sdk section rides in the prompt, and the program's tool calls land as
   // tool/code-dispatch events. Each overlay composes and pins its own header class.
@@ -618,44 +554,4 @@ defineAcpSnapshotSuite({
   scenarios: SCENARIOS,
   mode: snapshotModeFromEnv(process.env.DSH_SNAPSHOT),
   hasPwsh,
-})
-
-it('packed ACP fixture retains every chunk row kind without changing the logical session', () => {
-  const source = fixtureRecords(PACKED_CHUNKS_SOURCE)
-  const packed = fixtureRecords('packed-chunks')
-  const rowTypes = packed.flatMap((record) => {
-    if (record === null || typeof record !== 'object') return []
-    const type = (record as { type?: unknown }).type
-    return type === 'text-chunks' || type === 'reasoning-chunks' || type === 'tool-call-chunks' ? [type] : []
-  })
-
-  expect([...new Set(rowTypes)].sort()).toStrictEqual(['reasoning-chunks', 'text-chunks', 'tool-call-chunks'])
-  const withoutMessageId = (record: unknown): unknown => {
-    const cloned = structuredClone(record) as {
-      time?: unknown
-      type?: unknown
-      data?: {
-        durationMs?: unknown
-        id?: unknown
-        inserted?: Array<{ id?: unknown }>
-        message?: { id?: unknown }
-      }
-    }
-    delete cloned.time
-    if (cloned.type === 'agent/inbox/spliced') {
-      for (const message of cloned.data?.inserted ?? []) delete message.id
-    }
-    if (cloned.type === 'user/message') delete cloned.data?.id
-    if (cloned.type === 'assistant/message'
-      || cloned.type === 'tool/result') {
-      delete cloned.data?.message?.id
-    }
-    if (cloned.type === 'hook/result') delete cloned.data?.durationMs
-    return cloned
-  }
-  const logicalRecords = (records: readonly unknown[]): unknown[] => [
-    records[0],
-    ...records.slice(1).flatMap(record => decodeStorageRecord(record)).map(withoutMessageId),
-  ]
-  expect(logicalRecords(packed)).toStrictEqual(logicalRecords(source))
 })

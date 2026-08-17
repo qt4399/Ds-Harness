@@ -67,10 +67,6 @@ flowchart LR
   cfg --> plugin_acp_fs_observation_policy
   plugin_acp_tool_fs["tool-fs<br/>@deepseek-ai/dsh-tool-fs"]
   cfg --> plugin_acp_tool_fs
-  plugin_acp_hooks_claude_code["hooks-claude-code<br/>@deepseek-ai/dsh-hooks-claude-code"]
-  cfg --> plugin_acp_hooks_claude_code
-  plugin_acp_hooks_codex["hooks-codex<br/>@deepseek-ai/dsh-hooks-codex"]
-  cfg --> plugin_acp_hooks_codex
 ```
 
 | Plugin id | Package / module |
@@ -101,8 +97,6 @@ flowchart LR
 | `fs-sandbox` | `@deepseek-ai/dsh-fs-sandbox` |
 | `fs-observation-policy` | `@deepseek-ai/dsh-fs-observation-policy` |
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |
-| `hooks-claude-code` | `@deepseek-ai/dsh-hooks-claude-code` |
-| `hooks-codex` | `@deepseek-ai/dsh-hooks-codex` |
 
 Source config: [`examples/acp-agent/cordis.yml`](cordis.yml).
 

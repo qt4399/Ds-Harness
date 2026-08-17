@@ -21,7 +21,7 @@ describe('tails', () => {
     expect(() => { nodeApply(new Context()) }).not.toThrow()
   })
 
-  it('AssistantMarkdown renders reasoning as a Think row and unknown blocks as JSON fallback', () => {
+  it('AssistantMarkdown renders unknown blocks as JSON fallback and skips reasoning (hoisted to flow)', () => {
     const view = render(
       <AssistantMarkdown
         t={t}
@@ -33,8 +33,8 @@ describe('tails', () => {
         streaming
       />,
     )
-    expect(view.getByText('Think')).toBeTruthy()
-    expect(view.getByText('thinking hard')).toBeTruthy()
+    // Reasoning is hoisted to the ChatView flow layer; it does not render here.
+    expect(view.queryByText('Think')).toBeNull()
     expect(view.getByText(/未知内容块/)).toBeTruthy()
     const stopped = render(
       <AssistantMarkdown t={t} blocks={[{ kind: 'text', text: 'partial words' }]} streaming={false} interrupted />,

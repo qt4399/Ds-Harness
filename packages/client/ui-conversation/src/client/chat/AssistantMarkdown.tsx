@@ -17,7 +17,6 @@ import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives
 import { ImageGallery, type ImageLoader } from '@deepseek-ai/dsh-client-ui-attachment'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { messageImageLabels } from '../image-labels.ts'
-import { ReasoningRow } from './ReasoningRow.tsx'
 import css from './AssistantMarkdown.module.css'
 
 export interface AssistantMarkdownProps {
@@ -41,13 +40,13 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
   // Stable per locale revision (t identity changes on switch): a fresh object
   // per render would rebuild MarkdownText's component table every chunk.
   const codeLabels = useMemo(() => ({ copyLabel: t('copy'), copiedLabel: t('copied') }), [t])
-  const last = blocks.length - 1
-  // Tool-call heads render as tool rows in the chat view's grouping pass, so
-  // a node that is only those heads (or empty) would paint an empty root
-  // between tool groups — skip the shell unless something visible remains.
+  // Tool-call heads render as tool rows in the chat view's grouping pass and
+  // reasoning blocks are hoisted to the flow layer, so a node that is only
+  // those (or empty) would paint an empty root — skip the shell unless
+  // something visible remains.
   const hasVisible = streaming
     || interrupted === true
-    || blocks.some(block => block.kind !== 'tool-call')
+    || blocks.some(block => block.kind !== 'tool-call' && block.kind !== 'reasoning')
   if (!hasVisible) return null
   const rendered: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
@@ -66,7 +65,8 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
         )
         break
       case 'reasoning':
-        rendered.push(<ReasoningRow key={i} text={block.text} running={streaming && i === last} t={t} />)
+        // Reasoning blocks are hoisted to the ChatView flow layer as standalone
+        // entries; they render above the tool group, not inline here.
         break
       case 'image': {
         // Consecutive image blocks share one gallery so several images tile

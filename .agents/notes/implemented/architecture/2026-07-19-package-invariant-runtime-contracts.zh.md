@@ -40,7 +40,6 @@ Status: implemented
 | `dsh-tools` | pre/execute/post 阶段单调推进，以及最终 execution/result 快照不可变。 |
 | `dsh-system-prompt` | 权威 assembly 中 section、工具和 variable 的数据约束。 |
 | `dsh-compaction` | 压缩（compaction）start/summary/end 配对、范围端点、token 数量和成功时必须存在 summary。 |
-| `dsh-hook-protocol` | 钩子 invocation/result 的关联、dialect、身份和 duration 约束。 |
 | `dsh-sandbox-policy` | 持久化 `sandbox/mode` 事件必须使用封闭的 sandbox-mode 词表。 |
 | `dsh-fs` | 文件系统决策/观测事件必须携带可用的 target 和 version 身份。 |
 | `dsh-goal` | 持久化目标快照保持来源归属、渲染内容、修订号、生命周期和时间戳关系，并保证已准入的 Round 连续编号。 |

@@ -19,6 +19,7 @@ import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
 import { ToolCallGroup } from './ToolCallGroup.tsx'
+import { ReasoningRow } from './ReasoningRow.tsx'
 import { formatRunDuration } from './message-chrome.ts'
 import css from './ChatView.module.css'
 
@@ -104,11 +105,20 @@ function runningTurnStartTime(timeline: ConversationTimelineSnapshot): number | 
   return latest
 }
 
+/**
+ * One item in a tool group's disclosure body: either a tool call or a
+ * hoisted reasoning block, in source order.
+ */
+export type ToolGroupItem =
+  | { readonly kind: 'tool'; readonly nodeKey: string }
+  | { readonly kind: 'reasoning'; readonly nodeKey: string; readonly blockIndex: number }
+
 type FlowEntry =
   | { readonly kind: 'node'; readonly nodeKey: string }
-  | { readonly kind: 'tools'; readonly nodeKeys: readonly string[]; readonly turn: number | null; readonly running: boolean }
+  | { readonly kind: 'tools'; readonly items: readonly ToolGroupItem[]; readonly turn: number | null; readonly running: boolean }
+  | { readonly kind: 'reasoning'; readonly nodeKey: string; readonly blockIndex: number }
 
-type FlowNode = ChatConversationViewNode & { readonly kind: string }
+export type FlowNode = ChatConversationViewNode & { readonly kind: string }
 
 function assistantHasVisibleText(node: FlowNode): boolean {
   if (node.kind !== 'assistant-step') return false
@@ -116,6 +126,35 @@ function assistantHasVisibleText(node: FlowNode): boolean {
   return data.blocks?.some(block => (
     block.kind === 'text' && typeof block.text === 'string' && block.text.trim() !== ''
   )) === true
+}
+
+/**
+ * Read the reasoning block at a given index from an assistant node.
+ * @param node - the assistant-step flow node.
+ * @param blockIndex - index into the node's blocks array.
+ * @returns the reasoning text, or null when the block is absent or not a non-empty reasoning block.
+ */
+export function assistantReasoningAt(node: FlowNode, blockIndex: number): string | null {
+  if (node.kind !== 'assistant-step') return null
+  const data = node.data as { readonly blocks?: readonly { readonly kind?: string; readonly text?: string }[] }
+  const block = data.blocks?.[blockIndex]
+  if (block === undefined || block.kind !== 'reasoning' || typeof block.text !== 'string' || block.text.trim() === '') return null
+  return block.text
+}
+
+/**
+ * Whether a reasoning block is the streaming tail: its owning node is in an
+ * open turn and this is the last block in the node's block list.
+ * @param node - the assistant-step flow node.
+ * @param blockIndex - index into the node's blocks array.
+ * @returns true when the block is actively streaming.
+ */
+export function reasoningIsStreamingTail(node: FlowNode, blockIndex: number): boolean {
+  if (node.kind !== 'assistant-step') return false
+  const data = node.data as { readonly status?: string; readonly blocks?: readonly { readonly kind?: string }[] }
+  if (data.status !== 'running') return false
+  const blocks = data.blocks ?? []
+  return blockIndex === blocks.length - 1
 }
 
 function activeTurnNumber(timeline: ConversationTimelineSnapshot): number | null {
@@ -146,15 +185,32 @@ function nodeTurn(node: FlowNode): number | null {
   return node.location.turn.turn
 }
 
-function flushTools(entries: FlowEntry[], nodeKeys: string[], turn: number | null): void {
-  if (nodeKeys.length === 0) return
-  entries.push({ kind: 'tools', nodeKeys: [...nodeKeys], turn, running: false })
-  nodeKeys.length = 0
+function flushTools(entries: FlowEntry[], items: ToolGroupItem[], turn: number | null): void {
+  if (items.length === 0) return
+  entries.push({ kind: 'tools', items: [...items], turn, running: false })
+  items.length = 0
+}
+
+function toolCallId(node: FlowNode): string | null {
+  if (node.kind !== 'tool-call') return null
+  const root = (node.data as { readonly root?: { readonly callId?: string } }).root
+  return typeof root?.callId === 'string' && root.callId !== '' ? root.callId : null
+}
+
+function assistantToolCallIds(node: FlowNode): ReadonlySet<string> {
+  if (node.kind !== 'assistant-step') return new Set()
+  const data = node.data as { readonly blocks?: readonly { readonly kind?: string; readonly callId?: string }[] }
+  return new Set(data.blocks
+    ?.filter((block): block is { readonly kind: 'tool-call'; readonly callId: string } => (
+      block.kind === 'tool-call' && typeof block.callId === 'string' && block.callId !== ''
+    ))
+    .map(block => block.callId))
 }
 
 /**
- * Build one disclosure group for each uninterrupted tool phase. Step boundaries
- * and tool-result updates do not split a phase; visible assistant text does.
+ * Build one disclosure group for each uninterrupted tool phase. Assistant block
+ * order places reasoning and its matching tool call together; a tool that is
+ * absent from the Assistant blocks remains in durable event order.
  */
 function flowEntries(
   order: readonly string[],
@@ -163,25 +219,71 @@ function flowEntries(
   sessionRunning: boolean,
 ): FlowEntry[] {
   const entries: FlowEntry[] = []
-  const toolKeys: string[] = []
+  const items: ToolGroupItem[] = []
+  const toolsByCallId = new Map<string, string>()
+  const referencedToolIds = new Set<string>()
+  const consumedToolIds = new Set<string>()
   const activeTurn = activeTurnNumber(timeline)
   let toolTurn: number | null = null
+
   for (const nodeKey of order) {
     const node = nodes.get(nodeKey) as FlowNode | undefined
-    if (node?.kind === 'tool-call') {
+    const callId = node === undefined ? null : toolCallId(node)
+    if (callId !== null) toolsByCallId.set(callId, nodeKey)
+    if (node !== undefined) {
+      for (const toolId of assistantToolCallIds(node)) referencedToolIds.add(toolId)
+    }
+  }
+
+  for (const nodeKey of order) {
+    const node = nodes.get(nodeKey) as FlowNode | undefined
+    if (node === undefined) continue
+    if (node.kind === 'tool-call') {
+      const callId = toolCallId(node)
+      if (callId !== null && referencedToolIds.has(callId)) continue
       const turn = nodeTurn(node)
-      if (toolKeys.length > 0 && toolTurn !== turn) flushTools(entries, toolKeys, toolTurn)
+      if (items.length > 0 && toolTurn !== turn) flushTools(entries, items, toolTurn)
       toolTurn = turn
-      toolKeys.push(nodeKey)
+      items.push({ kind: 'tool', nodeKey })
       continue
     }
-    if (assistantHasVisibleText(node ?? { kind: '' } as FlowNode)) {
-      flushTools(entries, toolKeys, toolTurn)
-      toolTurn = null
+
+    if (node.kind === 'assistant-step') {
+      const data = node.data as {
+        readonly blocks?: readonly { readonly kind?: string; readonly callId?: string; readonly text?: string }[]
+      }
+      const blocks = data.blocks ?? []
+      const visibleText = assistantHasVisibleText(node)
+      for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+        const block = blocks[blockIndex]
+        if (block?.kind === 'reasoning' && typeof block.text === 'string' && block.text.trim() !== '') {
+          toolTurn ??= nodeTurn(node)
+          items.push({ kind: 'reasoning', nodeKey, blockIndex })
+          continue
+        }
+        if (block?.kind !== 'tool-call' || typeof block.callId !== 'string') continue
+        const toolNodeKey = toolsByCallId.get(block.callId)
+        if (toolNodeKey === undefined || consumedToolIds.has(block.callId)) continue
+        const toolNode = nodes.get(toolNodeKey) as FlowNode | undefined
+        const turn = toolNode === undefined ? nodeTurn(node) : nodeTurn(toolNode)
+        if (items.length > 0 && toolTurn !== null && toolTurn !== turn) flushTools(entries, items, toolTurn)
+        toolTurn = turn
+        items.push({ kind: 'tool', nodeKey: toolNodeKey })
+        consumedToolIds.add(block.callId)
+      }
+      if (visibleText) {
+        flushTools(entries, items, toolTurn)
+        toolTurn = null
+        entries.push({ kind: 'node', nodeKey })
+      }
+      continue
     }
+
+    flushTools(entries, items, toolTurn)
+    toolTurn = null
     entries.push({ kind: 'node', nodeKey })
   }
-  flushTools(entries, toolKeys, toolTurn)
+  flushTools(entries, items, toolTurn)
 
   const lastToolIndex = entries.findLastIndex(entry => entry.kind === 'tools')
   return entries.map((entry, index) => entry.kind === 'tools'
@@ -189,7 +291,11 @@ function flowEntries(
       ...entry,
       running: sessionRunning
           && index === lastToolIndex
-          && (entry.turn === null || entry.turn === activeTurn),
+          && (entry.turn === null || entry.turn === activeTurn)
+          && entry.items.some(item => item.kind === 'tool' || reasoningIsStreamingTail(
+            nodes.get(item.nodeKey) as FlowNode ?? { kind: '' } as FlowNode,
+            item.blockIndex,
+          )),
     }
     : entry)
 }
@@ -516,51 +622,69 @@ export function ChatView({
               </button>
             </div>
           )}
-          {entries.map((entry, index) => entry.kind === 'tools' ? (
-            <Fragment key={`tools:${entry.nodeKeys[0] ?? index}`}>
-              <ToolCallGroup
-                nodeKeys={entry.nodeKeys}
-                running={entry.running}
-                durationMs={entry.turn === null
-                  ? null
-                  : (() => {
-                    const turn = timeline.turns.get(entry.turn)
-                    return turn?.start === undefined || turn.end === undefined
+          {entries.map((entry) => {
+            if (entry.kind === 'reasoning') {
+              const node = nodeStore.get(entry.nodeKey) as FlowNode | undefined
+              const text = assistantReasoningAt(node ?? { kind: '' } as FlowNode, entry.blockIndex)
+              if (text === null) return null
+              const streaming = reasoningIsStreamingTail(node ?? { kind: '' } as FlowNode, entry.blockIndex)
+              return (
+                <Fragment key={`reasoning:${entry.nodeKey}:${entry.blockIndex}`}>
+                  <ReasoningRow text={text} running={streaming} t={t} />
+                </Fragment>
+              )
+            }
+            if (entry.kind === 'tools') {
+              const firstKey = entry.items.find(item => item.kind === 'tool')?.nodeKey ?? entry.items[0]?.nodeKey ?? ''
+              return (
+                <Fragment key={`tools:${firstKey}`}>
+                  <ToolCallGroup
+                    items={entry.items}
+                    running={entry.running}
+                    durationMs={entry.turn === null
                       ? null
-                      : Math.max(0, turn.end.time - turn.start.time)
-                  })()}
-                useSession={useSession}
-                selectedCallId={selectedCallId}
-                cwd={cwd}
-                openFile={openFile}
-                inspectCall={inspectCall}
-                forkAt={forkAt}
-                loadImage={loadImage}
-                fileMentions={fileMentions}
-                renderSlot={renderSlot}
-                t={t}
-              />
-            </Fragment>
-          ) : (
-            <Fragment key={entry.nodeKey}>
-              {thinkingExiting && entry.nodeKey === streamingAssistantKey && (
-                <TurnStatus startTime={runningTurnStart} exiting t={t} />
-              )}
-              <ChatNodeSeat
-                nodeKey={entry.nodeKey}
-                useSession={useSession}
-                selectedCallId={selectedCallId}
-                cwd={cwd}
-                openFile={openFile}
-                inspectCall={inspectCall}
-                forkAt={forkAt}
-                loadImage={loadImage}
-                fileMentions={fileMentions}
-                renderSlot={renderSlot}
-                t={t}
-              />
-            </Fragment>
-          ))}
+                      : (() => {
+                        const turn = timeline.turns.get(entry.turn)
+                        return turn?.start === undefined || turn.end === undefined
+                          ? null
+                          : Math.max(0, turn.end.time - turn.start.time)
+                      })()}
+                    nodeStore={nodeStore}
+                    useSession={useSession}
+                    selectedCallId={selectedCallId}
+                    cwd={cwd}
+                    openFile={openFile}
+                    inspectCall={inspectCall}
+                    forkAt={forkAt}
+                    loadImage={loadImage}
+                    fileMentions={fileMentions}
+                    renderSlot={renderSlot}
+                    t={t}
+                  />
+                </Fragment>
+              )
+            }
+            return (
+              <Fragment key={entry.nodeKey}>
+                {thinkingExiting && entry.nodeKey === streamingAssistantKey && (
+                  <TurnStatus startTime={runningTurnStart} exiting t={t} />
+                )}
+                <ChatNodeSeat
+                  nodeKey={entry.nodeKey}
+                  useSession={useSession}
+                  selectedCallId={selectedCallId}
+                  cwd={cwd}
+                  openFile={openFile}
+                  inspectCall={inspectCall}
+                  forkAt={forkAt}
+                  loadImage={loadImage}
+                  fileMentions={fileMentions}
+                  renderSlot={renderSlot}
+                  t={t}
+                />
+              </Fragment>
+            )
+          })}
           {/* No pending placeholders: questions (ui-user-questions) and approvals
               (ApprovalPanel) both take over the composer, so a flow card would
               double-render the same wait. */}

@@ -947,11 +947,12 @@ describe('useCalendarDay boundary refresh', () => {
 })
 
 describe('small branch tails', () => {
-  it('AssistantMarkdown single-line reasoning summary skips the newline cut', () => {
+  it('AssistantMarkdown skips reasoning blocks (hoisted to the ChatView flow layer)', () => {
     const view = render(
       <AssistantMarkdown t={t} blocks={[{ kind: 'reasoning', text: 'one-liner' }]} streaming={false} />,
     )
-    expect(view.getByText('one-liner')).toBeTruthy()
+    // Reasoning is rendered by ChatView as a standalone ReasoningRow, not here.
+    expect(view.queryByText('one-liner')).toBeNull()
   })
 
   it('StatsLine omits the cache-hit segment when no input accounting exists at all', () => {

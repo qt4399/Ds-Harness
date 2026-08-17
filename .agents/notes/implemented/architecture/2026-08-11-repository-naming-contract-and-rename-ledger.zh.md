@@ -247,13 +247,12 @@ PascalCase 标识符中的首字母缩略词使用首字母大写格式：`Ui`�
 | `WebService`, `WebServiceConfig` | `WebRuntime`, `WebRuntimeConfig` | 该对象选择提供方并运行实时搜索和抓取操作。保留包、键、提供方包和模型工具。 |
 | `@deepseek-ai/dsh-web-fetch-local`、`LocalFetchProvider`、`LocalFetchLimits`，提供方 id `local-http` | `@deepseek-ai/dsh-web-fetch-http`、`HttpFetchProvider`、`HttpFetchLimits`，提供方 id `http` | 该提供方执行直接 HTTP 抓取。`local` 只说明代码恰好在哪里运行，并未说明它提供哪种机制。 |
 
-保留 `@deepseek-ai/dsh-subagent-dsh-sdk`、其提供方 id `dsh-sdk`、外部 ACP（Agent Client Protocol）、Codex 和 Claude Code 提供方系列、subagent 工具包名、主文件系统包和后端、文件系统工具和事件，以及 skill 徽章和工具包。
+保留 `@deepseek-ai/dsh-subagent-dsh-sdk`、其提供方 id `dsh-sdk`、外部 ACP（Agent Client Protocol）、subagent 工具包名、主文件系统包和后端、文件系统工具和事件，以及 skill 徽章和工具包。
 
 ### 钩子、防护、Plan Mode、扩展与诊断
 
 | 旧名称 | 当前名称 | 理由 |
 |---|---|---|
-| `@deepseek-ai/dsh-hooks-claude`、`ClaudeHookConfig`、`parseClaudeConfig`，方言 `claude` | `@deepseek-ai/dsh-hooks-claude-code`、`ClaudeCodeHookConfig`、`parseClaudeCodeConfig`，方言 `claude-code` | 该钩子桥接面向 Claude Code，而非所有 Anthropic 或 Claude 产品。 |
 | `@deepseek-ai/dsh-repeat-tool-guard`，插件／来源 `repeat-tool-guard` | `@deepseek-ai/dsh-repeat-tool-reminder`，插件／来源 `repeat-tool-reminder` | 该插件向模型添加提醒，并不阻止工具调用，也不执行防护决策。 |
 | `@deepseek-ai/dsh-timeout-policy` | `@deepseek-ai/dsh-tool-call-timeout-policy` | 完整的 `tool-call` 限定词说明该策略限制的对象，而不会把插件称为面向模型的工具。保留其 `guard/timeout-policy/` 目录和插件 id `timeout-policy`；`packages/*/tool-*` 目录约定仍只适用于注册工具的包。 |
 | `PlanModeService` | `PlanModeController` | 该对象控制进入和退出计划模式的状态转换，而不是通用执行运行时。 |

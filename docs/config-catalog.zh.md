@@ -658,71 +658,6 @@ export interface Config {
 
 来源：[`packages/bundle/headless/src/index.ts:31`](../packages/bundle/headless/src/index.ts)
 
-<a id="deepseek-aidsh-hooks-claude-code"></a>
-
-## `@deepseek-ai/dsh-hooks-claude-code`
-
-需要：`bash`
-
-```ts config-catalog
-/** Plugin config: where the CC hook config lives + substitution roots. */
-export interface Config {
-  /**
-   * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
-   * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
-   */
-  configPath: string
-  /**
-   * Replaces `${CLAUDE_PLUGIN_ROOT}` in command strings (the plugin's root dir).
-   */
-  pluginRoot?: string
-  /**
-   * Replaces `${CLAUDE_PROJECT_DIR}` in command strings AND is exported as the
-   * `CLAUDE_PROJECT_DIR` env var for hook processes. When omitted, the env var
-   * defaults per-run to the agent's session workspace (`session.header.cwd`, the
-   * same dir the hook runs in) — Claude Code always exports this var, and common
-   * unmodified hooks reference `$CLAUDE_PROJECT_DIR` for project-relative paths.
-   */
-  projectDir?: string
-  /** Default per-hook timeout in ms when a hook sets none (CC default: 600000). */
-  defaultTimeoutMs?: number
-  /** Character cap for the `hook/result` event's persisted stderr summary. */
-  stderrSummaryMaxChars?: number
-}
-```
-
-来源：[`packages/hooks/hooks-claude-code/src/index.ts:45`](../packages/hooks/hooks-claude-code/src/index.ts)
-
-<a id="deepseek-aidsh-hooks-codex"></a>
-
-## `@deepseek-ai/dsh-hooks-codex`
-
-需要：`bash`
-
-```ts config-catalog
-/** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
-export interface Config {
-  /**
-   * Path to a Codex `hooks.json`. Process-level: read once at load, a relative
-   * path resolves against the process launch cwd.
-   * TODO(per-session-hook-config): per-session project-local discovery from each
-   * `session/new.cwd`.
-   */
-  configPath: string
-  /** The model name stamped on every payload (Codex includes `model` on each event). */
-  model?: string
-  /** Default per-hook timeout in ms when a hook sets none (Codex default: 600000). */
-  defaultTimeoutMs?: number
-  /** Character cap for the `hook/result` event's persisted stderr summary. */
-  stderrSummaryMaxChars?: number
-}
-```
-
-来源：[`packages/hooks/hooks-codex/src/index.ts:44`](../packages/hooks/hooks-codex/src/index.ts)
-
 <a id="deepseek-aidsh-host-apiproxy"></a>
 
 ## `@deepseek-ai/dsh-host-apiproxy`
@@ -2076,48 +2011,6 @@ export type PermissionPolicy = 'allow' | 'reject'
 
 来源：[`packages/subagent/subagent-acp/src/index.ts:27`](../packages/subagent/subagent-acp/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-claude-code"></a>
-
-## `@deepseek-ai/dsh-subagent-claude-code`
-
-需要：`subagents` · `subprocess`
-
-```ts config-catalog
-/** Deployment-owned environment and process-release bound. */
-export interface Config {
-  /**
-   * Explicit environment entries layered over the subprocess seam's
-   * credential-scrubbed parent environment.
-   */
-  env?: Record<string, string>
-  /** Grace in milliseconds for Claude Code process-tree termination. */
-  disposeGraceMs?: number
-}
-```
-
-来源：[`packages/subagent/subagent-claude-code/src/index.ts:32`](../packages/subagent/subagent-claude-code/src/index.ts)
-
-<a id="deepseek-aidsh-subagent-codex"></a>
-
-## `@deepseek-ai/dsh-subagent-codex`
-
-需要：`subagents` · `subprocess`
-
-```ts config-catalog
-/** Deployment-owned environment and process-release bound. */
-export interface Config {
-  /**
-   * Explicit environment entries layered over the subprocess seam's
-   * credential-scrubbed parent environment.
-   */
-  env?: Record<string, string>
-  /** Grace in milliseconds for app-server process-tree termination. */
-  disposeGraceMs?: number
-}
-```
-
-来源：[`packages/subagent/subagent-codex/src/index.ts:30`](../packages/subagent/subagent-codex/src/index.ts)
-
 <a id="deepseek-aidsh-subagent-dsh-sdk"></a>
 
 ## `@deepseek-ai/dsh-subagent-dsh-sdk`
@@ -3132,7 +3025,6 @@ export interface Config {
 - `@deepseek-ai/dsh-client-web-react`（[`packages/client/web-react/src/index.ts`](../packages/client/web-react/src/index.ts)）
 - `@deepseek-ai/dsh-cmdline`（[`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts)）
 - `@deepseek-ai/dsh-home-paths`（[`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts)）
-- `@deepseek-ai/dsh-hook-protocol`（[`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts)）
 - `@deepseek-ai/dsh-launch-environment`（[`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts)）
 - `@deepseek-ai/dsh-llm-mock-server`（[`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts)）
 - `@deepseek-ai/dsh-loader-smoke`（[`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts)）

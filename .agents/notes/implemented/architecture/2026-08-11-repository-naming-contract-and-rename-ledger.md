@@ -247,13 +247,12 @@ Keep the complete session projection family and `SessionProjection*` vocabulary.
 | `WebService`, `WebServiceConfig` | `WebRuntime`, `WebRuntimeConfig` | The object selects providers and runs live search and fetch operations. Keep the package, key, provider packages, and model tool. |
 | `@deepseek-ai/dsh-web-fetch-local`, `LocalFetchProvider`, `LocalFetchLimits`, provider id `local-http` | `@deepseek-ai/dsh-web-fetch-http`, `HttpFetchProvider`, `HttpFetchLimits`, provider id `http` | This provider performs direct HTTP fetches. `local` says where code happens to run, not which mechanism it provides. |
 
-Keep `@deepseek-ai/dsh-subagent-dsh-sdk`, its provider id `dsh-sdk`, external ACP, Codex, and Claude Code provider families, the subagent tool package names, the main filesystem package and backends, filesystem tools and events, and the skill badge and tool packages.
+Keep `@deepseek-ai/dsh-subagent-dsh-sdk`, its provider id `dsh-sdk`, external ACP, the subagent tool package names, the main filesystem package and backends, filesystem tools and events, and the skill badge and tool packages.
 
 ### Hooks, guards, plan mode, extensions, and diagnostics
 
 | Former | Current | Reason |
 |---|---|---|
-| `@deepseek-ai/dsh-hooks-claude`, `ClaudeHookConfig`, `parseClaudeConfig`, dialect `claude` | `@deepseek-ai/dsh-hooks-claude-code`, `ClaudeCodeHookConfig`, `parseClaudeCodeConfig`, dialect `claude-code` | The hook bridge targets Claude Code, not every Anthropic or Claude product. |
 | `@deepseek-ai/dsh-repeat-tool-guard`, plugin/source `repeat-tool-guard` | `@deepseek-ai/dsh-repeat-tool-reminder`, plugin/source `repeat-tool-reminder` | The plugin adds a model reminder. It does not block or enforce a guard decision. |
 | `@deepseek-ai/dsh-timeout-policy` | `@deepseek-ai/dsh-tool-call-timeout-policy` | The full `tool-call` qualifier names what the policy limits without calling the plugin a model-facing tool. Keep its `guard/timeout-policy/` directory and plugin id `timeout-policy`; the `packages/*/tool-*` catalog convention still applies only to packages that register tools. |
 | `PlanModeService` | `PlanModeController` | The object controls transitions into and out of plan mode. It is not a general execution runtime. |

@@ -23,6 +23,7 @@ import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { createChatStore } from '../src/client/stores.ts'
 import { ChatView } from '../src/client/chat/ChatView.tsx'
+import { ToolCallGroup } from '../src/client/chat/ToolCallGroup.tsx'
 import { zh } from '../src/client/locales.ts'
 import { AssistantNodeView } from '../src/client/chat/AssistantNodeView.tsx'
 import { CommandNodeView, ManualCompactionNodeView } from '../src/client/chat/CommandNodeView.tsx'
@@ -416,6 +417,111 @@ describe('ChatView', () => {
     nextTop = 560
     act(() => { h.set({ nodes: [assistant(2, 'older'), user(9, 'first visible'), user(10, 'next visible')] }) })
     expect(scroller.scrollTop).toBe(590) // latest 90 + the anchored row's 500px prepend shift
+  })
+
+  it('renders reasoning and its matching Tool calls once in assistant block order', () => {
+    const thoughtThenTools: AssistantMessageNode = {
+      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1,
+      blocks: [
+        { kind: 'reasoning', text: 'first thought' },
+        { kind: 'tool-call', callId: 'a', name: 'bash', argsRaw: '{}' },
+        { kind: 'reasoning', text: 'second thought' },
+        { kind: 'tool-call', callId: 'b', name: 'bash', argsRaw: '{}' },
+      ],
+    }
+    const h = makeHarness({
+      nodes: [
+        thoughtThenTools,
+        { ...toolResult(3, 'a'), turn: 1, step: 1 } as never,
+        { ...toolResult(4, 'b'), turn: 1, step: 1 } as never,
+      ],
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const group = view.container.querySelector('[data-tool-group]') as HTMLElement
+    expect(group).toBeTruthy()
+    fireEvent.click(within(group).getByRole('status'))
+    expect([...group.querySelectorAll('[data-variant="think"], [data-chat-call-id]')].map(element => (
+      element.getAttribute('data-variant') === 'think' ? 'think' : element.textContent
+    ))).toEqual(['think', 'bash:a', 'think', 'bash:b'])
+    expect(view.queryByText('first thought')).toBeNull()
+    expect(view.queryByText('second thought')).toBeNull()
+  })
+
+  it('places a settled Think before its same-step prose instead of leaving it at the tail', () => {
+    const answer: AssistantMessageNode = {
+      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1,
+      blocks: [
+        { kind: 'reasoning', text: 'checking the time zone' },
+        { kind: 'text', text: '现在是 14:18。' },
+      ],
+    }
+    const h = makeHarness({ nodes: [answer] })
+    const view = render(<h.ChatView {...h.props} />)
+    const think = view.container.querySelector('[data-variant="think"]') as HTMLElement
+    const prose = view.getByText('现在是 14:18。')
+    expect(Boolean(think.compareDocumentPosition(prose) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+  })
+
+  it('keeps streaming reasoning inside the active Tool disclosure and removes the tail status', () => {
+    const h = makeHarness({
+      partial: { turn: 1, step: 1, blocks: [{ kind: 'reasoning', text: 'checking the workspace' }] },
+      running: true,
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const group = view.container.querySelector('[data-tool-group]') as HTMLDetailsElement
+    expect(group).toBeTruthy()
+    expect(group.open).toBe(true)
+    expect(within(group).getByText('· 6 tokens')).toBeTruthy()
+    expect(view.getAllByRole('status')).toHaveLength(1)
+  })
+
+  it('does not duplicate a standalone reasoning row in a later Tool group', () => {
+    const thought: AssistantMessageNode = {
+      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1,
+      blocks: [{ kind: 'reasoning', text: 'one thought only' }],
+    }
+    const h = makeHarness({
+      nodes: [thought, assistant(3, 'visible reply'), { ...toolResult(4, 'a'), turn: 1, step: 2 } as never],
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText('one thought only')).toBeNull()
+    expect(view.container.querySelectorAll('[data-variant="think"]')).toHaveLength(1)
+    expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+  })
+
+  it('does not mark a settled reasoning row as running while its Turn remains open', () => {
+    const thought: AssistantMessageNode = {
+      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1,
+      blocks: [{ kind: 'reasoning', text: 'finished first step' }],
+    }
+    const h = makeHarness({ nodes: [thought], running: true })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText('finished first step')).toBeNull()
+    expect(view.queryByText('运行中')).toBeNull()
+    expect((view.container.querySelector('[data-tool-group]') as HTMLElement | null)?.dataset.running).toBeUndefined()
+  })
+
+  it('formats Tool group minutes as sixty-second units', () => {
+    const h = makeHarness()
+    const view = render(
+      <ToolCallGroup
+        items={[]}
+        running={false}
+        durationMs={65_000}
+        nodeStore={{ get: () => undefined }}
+        useSession={h.props.useSession}
+        selectedCallId={undefined}
+        cwd={undefined}
+        openFile={h.openFile}
+        inspectCall={h.inspectCall}
+        forkAt={h.forkAt}
+        loadImage={async () => ''}
+        fileMentions={() => undefined}
+        renderSlot={h.props.renderSlot}
+        t={h.props.t}
+      />,
+    )
+    expect(view.getByRole('status').textContent).toBe('已完成思考 · 1m5s')
   })
 
   it('renders the fixture main line as independently keyed business nodes', () => {

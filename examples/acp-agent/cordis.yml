@@ -172,21 +172,3 @@
 
 - id: tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
-
-# `configPath` is read once at load and resolves from the server launch cwd, not
-# `session/new.cwd`; one `hooks.json` therefore applies to every session and a
-# project-local file is not discovered. Missing config registers nothing. Hook
-# commands still run in the session cwd. Warnings use `ctx.logger`, never stdout;
-# see packages/hooks/hooks-claude-code/README.md for the deferred per-session design.
-- id: hooks-claude-code
-  name: '@deepseek-ai/dsh-hooks-claude-code'
-  config:
-    configPath: ./hooks.json
-
-# Codex uses its own `codex-hooks.json` and snake_case five-event dialect; it
-# cannot share Claude's file. It has the same process-level, read-once, missing-is-no-op,
-# logger-only contract. Shipping both bridges lets a scenario seed and exercise either dialect.
-- id: hooks-codex
-  name: '@deepseek-ai/dsh-hooks-codex'
-  config:
-    configPath: ./codex-hooks.json

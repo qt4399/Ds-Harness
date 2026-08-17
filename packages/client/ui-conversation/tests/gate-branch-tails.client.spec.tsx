@@ -13,7 +13,8 @@ import type { DetailsSlotProps, DetailsToolOwnerProps, SelectionTarget } from '@
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { createChatStore } from '../src/client/stores.ts'
-import { AssistantMarkdown, type AssistantMarkdownProps } from '../src/client/chat/AssistantMarkdown.tsx'
+import type { AssistantMarkdownProps } from '../src/client/chat/AssistantMarkdown.tsx'
+import { ReasoningRow } from '../src/client/chat/ReasoningRow.tsx'
 import { StatsLine } from '../src/client/chat/StatsLine.tsx'
 import { DetailsPanel } from '../src/client/skeleton/DetailsPanel.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -58,15 +59,10 @@ function snapshotBase(): ConversationSnapshot {
 }
 
 describe('render branch tails', () => {
-  it('AssistantMarkdown reasoning row is ok-state when not the streaming tail', () => {
+  it('ReasoningRow is ok-state when not the streaming tail', () => {
     const view = render(
-      <AssistantMarkdown
-        t={t}
-        blocks={[{ kind: 'reasoning', text: 'done thinking' }, { kind: 'text', text: 'answer' }]}
-        streaming
-      />,
+      <ReasoningRow text="done thinking" running={false} t={t} />,
     )
-    // reasoning at index 0 with a later block: running is false → ok state.
     expect(view.container.querySelector('[data-state="ok"]')).not.toBeNull()
   })
 
@@ -98,9 +94,9 @@ describe('render branch tails', () => {
     expect(view.container.textContent).toBe('2 轮 · 3 步')
   })
 
-  it('AssistantMarkdown reasoning as the streaming tail renders the running ring', () => {
+  it('ReasoningRow as the streaming tail renders the running ring', () => {
     const view = render(
-      <AssistantMarkdown t={t} blocks={[{ kind: 'reasoning', text: 'still thinking' }]} streaming />,
+      <ReasoningRow text="still thinking" running t={t} />,
     )
     expect(view.container.querySelector('[data-state="running"]')).not.toBeNull()
   })

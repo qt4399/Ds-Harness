@@ -717,9 +717,8 @@ describe('tools/pre-execute gate (native-plugin permission pattern, end-to-end t
 })
 
 describe('worked example: a native hook plugin is just a cordis plugin on the seams', () => {
-  // The whole point of the interception taxonomy: a "native hook" needs no dsh-hook-protocol,
-  // no external command, no hook/* log — it is an ordinary cordis plugin subscribing to the
-  // canonical events and returning typed decisions.
+  // A native hook is an ordinary Cordis plugin that subscribes to canonical events
+  // and returns typed decisions.
   const NativeGuard = {
     name: 'native-guard',
     apply(ctx: Context) {

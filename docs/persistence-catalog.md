@@ -420,56 +420,6 @@ Source: [`packages/feedback/command-feedback/src/index.ts:62`](../packages/feedb
 
 Source: [`packages/goal/goal/src/domain.ts:66`](../packages/goal/goal/src/domain.ts)
 
-### `hook/*`
-
-<a id="hookinvoked--log-only"></a>
-
-#### `hook/invoked` — log-only
-
-```ts persistence-catalog
-/**
- * A hook command was invoked at a hook point — a log-only record (like
- * `compaction/*`; NOT a {@link SurfaceEventType}, carries no `surfaceOp`).
- * `dialect` is the bridge that ran it (`claude`/`codex`), `point`
- * the hook point (`PreToolUse`, `Stop`, …), `matcher` the matcher-group
- * pattern that selected it (absent for match-all), `handlerId` a stable id
- * for the command (so an invoked/result pair correlates). `turn` is the open
- * turn the invocation lives inside.
- */
-'hook/invoked': {
-  turn: number
-  point: string
-  dialect: HookDialect
-  matcher?: string
-  handlerId: string
-}
-```
-
-Source: [`packages/hooks/hook-protocol/src/types.ts:19`](../packages/hooks/hook-protocol/src/types.ts)
-
-<a id="hookresult--log-only"></a>
-
-#### `hook/result` — log-only
-
-```ts persistence-catalog
-/**
- * Log-only outcome paired to `hook/invoked` by `handlerId`. Decision is the
- * parsed permission result, `stop` for `continue:false`, or `pass`; exit code
- * may be absent, stderr is bounded, and duration is wall-clock runtime.
- */
-'hook/result': {
-  turn: number
-  point: string
-  handlerId: string
-  decision: string
-  exitCode?: number
-  stderrSummary?: string
-  durationMs: number
-}
-```
-
-Source: [`packages/hooks/hook-protocol/src/types.ts:31`](../packages/hooks/hook-protocol/src/types.ts)
-
 ### `llm/*`
 
 <a id="llmretry--log-only"></a>

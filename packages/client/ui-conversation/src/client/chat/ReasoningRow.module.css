@@ -41,28 +41,14 @@
   font-weight: 400;
 }
 
-.separator {
+.count {
   flex: none;
-  width: 2px;
-  height: 2px;
-  margin: 0 8px;
-  border-radius: 1px;
-  background: var(--dsw-alias-label-caption);
-}
-
-.summary {
-  min-width: 0;
-  overflow: hidden;
-  flex: 1 1 auto;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 14px;
+  margin-left: 8px;
+  color: var(--dsw-alias-label-caption);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   line-height: 24px;
-  text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.summary[data-follow-end] {
-  text-overflow: clip;
 }
 
 .thinkBody {

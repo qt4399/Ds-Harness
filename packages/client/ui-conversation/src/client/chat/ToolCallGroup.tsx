@@ -1,7 +1,12 @@
-/** Collapsed step-level presentation for a run of tool calls. */
+/** Collapsed step-level presentation for a run of tool calls and reasoning blocks. */
 import { memo, useEffect, useState } from 'react'
+import type { ChatConversationViewNode } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ChatViewSlotProps, ChatNodeOwnerProps } from '../contract/slots.ts'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
+import { ReasoningRow } from './ReasoningRow.tsx'
+import {
+  assistantReasoningAt, reasoningIsStreamingTail, type FlowNode, type ToolGroupItem,
+} from './ChatView.tsx'
 import css from './ToolCallGroup.module.css'
 
 function compactDuration(ms: number): string {
@@ -13,9 +18,10 @@ function compactDuration(ms: number): string {
 }
 
 interface ToolCallGroupProps {
-  readonly nodeKeys: readonly string[]
+  readonly items: readonly ToolGroupItem[]
   readonly running: boolean
   readonly durationMs: number | null
+  readonly nodeStore: { get(key: string): ChatConversationViewNode | undefined }
   readonly useSession: ChatViewSlotProps['useSession']
   readonly selectedCallId: ChatNodeOwnerProps['selectedCallId']
   readonly cwd: ChatNodeOwnerProps['cwd']
@@ -28,9 +34,9 @@ interface ToolCallGroupProps {
   readonly t: ChatViewSlotProps['t']
 }
 
-/** Renders one step's tools under a minimal native disclosure label. */
+/** Renders one step's tools and reasoning blocks under a minimal native disclosure label. */
 export const ToolCallGroup = memo(function ToolCallGroup({
-  nodeKeys, running, durationMs, useSession, selectedCallId, cwd, openFile, inspectCall,
+  items, running, durationMs, nodeStore, useSession, selectedCallId, cwd, openFile, inspectCall,
   forkAt, loadImage, fileMentions, renderSlot, t,
 }: ToolCallGroupProps) {
   const [open, setOpen] = useState(running)
@@ -57,22 +63,31 @@ export const ToolCallGroup = memo(function ToolCallGroup({
             })}
       </summary>
       <div className={css.calls}>
-        {nodeKeys.map(nodeKey => (
-          <ChatNodeSeat
-            key={nodeKey}
-            nodeKey={nodeKey}
-            useSession={useSession}
-            selectedCallId={selectedCallId}
-            cwd={cwd}
-            openFile={openFile}
-            inspectCall={inspectCall}
-            forkAt={forkAt}
-            loadImage={loadImage}
-            fileMentions={fileMentions}
-            renderSlot={renderSlot}
-            t={t}
-          />
-        ))}
+        {items.map((item) => {
+          if (item.kind === 'reasoning') {
+            const node = nodeStore.get(item.nodeKey) as FlowNode | undefined
+            const text = assistantReasoningAt(node ?? { kind: '' } as FlowNode, item.blockIndex)
+            if (text === null) return null
+            const streaming = reasoningIsStreamingTail(node ?? { kind: '' } as FlowNode, item.blockIndex)
+            return <ReasoningRow key={`reasoning:${item.nodeKey}:${item.blockIndex}`} text={text} running={streaming} t={t} />
+          }
+          return (
+            <ChatNodeSeat
+              key={item.nodeKey}
+              nodeKey={item.nodeKey}
+              useSession={useSession}
+              selectedCallId={selectedCallId}
+              cwd={cwd}
+              openFile={openFile}
+              inspectCall={inspectCall}
+              forkAt={forkAt}
+              loadImage={loadImage}
+              fileMentions={fileMentions}
+              renderSlot={renderSlot}
+              t={t}
+            />
+          )
+        })}
       </div>
     </details>
   )

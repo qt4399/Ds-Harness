@@ -133,7 +133,6 @@ Costs and accepted limits:
 In-repo precedents this design copies or contrasts with:
 
 - The `fs/write-intent` gate (`packages/fs/fs/`) — the documented single-occupancy decision-slot waterfall semantics (first answer wins, delegate via `next()`) the answerer contract reuses.
-- `hook/invoked`/`hook/result` — the log-only audit-pair precedent `approval/asked`/`approval/decided` follows; [the hook-bridges Agent Note](2026-06-30-hook-bridges.md) ships `permissionDecision: ask`, the first producer.
 - [The interception extension-points Agent Note](2026-06-30-interception-extension-points.md) — the `tools/pre-execute` `allow`/`deny`/`ask` vocabulary whose `ask` this seam services.
 - [The automation-only ACP Agent Note](../simplification/2026-07-23-acp-automation-only-protocol.md) — the exact-agent ownership check against the session map that the answerer routes through; [the multi-session Agent Note](2026-06-14-acp-multi-session.md) — the per-session permission-ownership blocker this implements.
 - The opportunistic `ctx.get()` consumption pattern (`tool-bash`'s owner-token lookup, the loop's persistence probe) — how `dsh-tools` consumes the seam without gating its fiber on it.
